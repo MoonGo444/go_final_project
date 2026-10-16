@@ -10,7 +10,7 @@ import (
 func Run(port string) error {
 	prt := os.Getenv(port)
 	if prt == "" {
-		prt = port
+		prt = ":7540"
 	}
 
 	api.Init()
