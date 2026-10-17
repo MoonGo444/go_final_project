@@ -6,11 +6,17 @@ import (
 	"time"
 
 	"github.com/moongo444/go_final_project/internal/calc"
+	"github.com/moongo444/go_final_project/internal/db"
 )
 
 const format = "20060102"
 
 func NextDateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJson(w, db.ErrMethod.Error(), false, db.ErrMethod)
+		return
+	}
+
 	now := r.FormValue("now")
 	if now == "" {
 		now = time.Now().Format(format)

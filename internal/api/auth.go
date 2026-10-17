@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"os"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/moongo444/go_final_project/internal/auth"
 	"github.com/moongo444/go_final_project/internal/db"
 )
@@ -59,10 +59,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	writeJson(w, token, true, nil)
 }
 
-func CheckAuth(next http.HandlerFunc) http.HandlerFunc {
+func CheckAuth(next http.HandlerFunc, pass string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pass := os.Getenv("TODO_PASSWORD")
-
 		if len(pass) > 0 {
 			var token string
 			var claim claims

@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"os"
 	"strconv"
 	"time"
 
@@ -35,25 +34,8 @@ type Tasks struct {
 	Tasks []*Task `json:"tasks"`
 }
 
-func OpenDB() (*sql.DB, error) {
-	dbPath := os.Getenv("TODO_DBFILE")
-
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return db, nil
-}
-
 func AddTask(task *Task) (string, error) {
 	var id int64
-
-	db, err := OpenDB()
-	if err != nil {
-		return "", err
-	}
-	defer db.Close()
 
 	query := `INSERT INTO scheduler (date, title, comment, repeat) VALUES (?, ?, ?, ?)`
 
@@ -70,15 +52,9 @@ func AddTask(task *Task) (string, error) {
 func GetTask(prm string) (Task, error) {
 	var task Task
 
-	db, err := OpenDB()
-	if err != nil {
-		return Task{}, err
-	}
-	defer db.Close()
-
 	query := `SELECT * FROM scheduler WHERE id = ?`
 
-	err = db.QueryRow(query, prm).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	err := db.QueryRow(query, prm).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
 		return Task{}, err
 	}
@@ -96,12 +72,6 @@ func EditTask(task *Task) error {
 	if task.ID == "" {
 		return ErrIdEmpty
 	}
-
-	db, err := OpenDB()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
 
 	res, err := db.Exec(query, task.Date, task.Title, task.Comment, task.Repeat, task.ID)
 	if err != nil {
@@ -121,42 +91,19 @@ func EditTask(task *Task) error {
 }
 
 func GetTasks(prm string, count int) ([]*Task, error) {
+	var rows *sql.Rows
 	tasks := make([]*Task, 0)
-
-	db, err := OpenDB()
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
 
 	query := `SELECT * FROM scheduler ORDER BY date LIMIT ?`
 
-	rows, err := db.Query(query, count)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	if prm != "" {
-		prmTm, err := time.Parse("02.01.2006", prm)
+	if prm == "" {
+		rows, err := db.Query(query, count)
 		if err != nil {
-			query = `SELECT * FROM scheduler WHERE title LIKE ? OR comment LIKE ? ORDER BY date LIMIT ?`
-			prm = "%" + prm + "%"
-			rows, err = db.Query(query, prm, prm, count)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			query = `SELECT * FROM scheduler WHERE date = ? LIMIT ?`
-			prm = prmTm.Format("20060102")
-			rows, err = db.Query(query, prm, count)
-			if err != nil {
-				return nil, err
-			}
+			return nil, err
 		}
+		defer rows.Close()
 
 		for rows.Next() {
-
 			var task Task
 
 			err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
@@ -172,6 +119,25 @@ func GetTasks(prm string, count int) ([]*Task, error) {
 		}
 
 		return tasks, nil
+	}
+
+	prmTm, err := time.Parse("02.01.2006", prm)
+	if err != nil {
+		query = `SELECT * FROM scheduler WHERE title LIKE ? OR comment LIKE ? ORDER BY date LIMIT ?`
+		prm = "%" + prm + "%"
+		rows, err = db.Query(query, prm, prm, count)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+	} else {
+		query = `SELECT * FROM scheduler WHERE date = ? LIMIT ?`
+		prm = prmTm.Format("20060102")
+		rows, err = db.Query(query, prm, count)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
 	}
 
 	for rows.Next() {
@@ -195,13 +161,7 @@ func GetTasks(prm string, count int) ([]*Task, error) {
 func DoneTask(id string) error {
 	var task Task
 
-	db, err := OpenDB()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	err = db.QueryRow(`SELECT * FROM scheduler WHERE id = ?`, id).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	err := db.QueryRow(`SELECT * FROM scheduler WHERE id = ?`, id).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = ErrTaskEmpty
@@ -235,12 +195,6 @@ func DoneTask(id string) error {
 
 func DeleteTask(id string) error {
 	query := `DELETE FROM scheduler WHERE id = ?`
-
-	db, err := OpenDB()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
 
 	res, err := db.Exec(query, id)
 	if err != nil {

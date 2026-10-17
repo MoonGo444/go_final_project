@@ -8,9 +8,11 @@ import (
 )
 
 func main() {
-	if err := db.Init("TODO_DBFILE"); err != nil {
+	db, err := db.Init("TODO_DBFILE")
+	if err != nil {
 		log.Fatalf("db: %v", err)
 	}
+	defer db.Close()
 
 	if err := server.Run("TODO_PORT"); err != nil {
 		log.Fatalf("server: %v", err)

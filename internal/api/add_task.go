@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -12,7 +13,19 @@ import (
 	"github.com/moongo444/go_final_project/internal/db"
 )
 
+func codeError(err error) int {
+	switch {
+	case errors.Is(err, db.ErrMethod):
+		return http.StatusMethodNotAllowed
+	case errors.Is(err, db.ErrTaskEmpty):
+		return http.StatusNotFound
+	default:
+		return http.StatusBadRequest
+	}
+}
+
 func writeJson(w http.ResponseWriter, data any, login bool, err error) {
+	respErr := err
 	var resp []byte
 
 	if login == true && err == nil {
@@ -20,7 +33,7 @@ func writeJson(w http.ResponseWriter, data any, login bool, err error) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 		}
-		w.Header().Set("Content-Type", "aplication/json; charset=UTF-8")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
 		return
@@ -32,7 +45,7 @@ func writeJson(w http.ResponseWriter, data any, login bool, err error) {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
-		w.Header().Set("Content-Type", "aplication/json; charset=UTF-8")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write(resp)
 		return
@@ -45,7 +58,7 @@ func writeJson(w http.ResponseWriter, data any, login bool, err error) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			w.Header().Set("Content-Type", "aplication/json; charset=UTF-8")
+			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.WriteHeader(http.StatusOK)
 			w.Write(resp)
 			return
@@ -55,7 +68,7 @@ func writeJson(w http.ResponseWriter, data any, login bool, err error) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			w.Header().Set("Content-Type", "aplication/json, charset=UTF-8")
+			w.Header().Set("Content-Type", "application/json, charset=UTF-8")
 			w.WriteHeader(http.StatusOK)
 			w.Write(resp)
 			return
@@ -65,6 +78,7 @@ func writeJson(w http.ResponseWriter, data any, login bool, err error) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 	} else {
 		resp, err = json.Marshal(db.Resp{Err: data.(string)})
@@ -72,10 +86,10 @@ func writeJson(w http.ResponseWriter, data any, login bool, err error) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(codeError(respErr))
 	}
 
-	w.Header().Set("Content-Type", "aplication/json; charset=UTF-8")
 	w.Write(resp)
 }
 
@@ -88,10 +102,10 @@ func checkDate(task *db.Task) error {
 	}
 
 	if task.Date == "" {
-		task.Date = now.Format("20060102")
+		task.Date = now.Format(format)
 	}
 
-	tmDate, err := time.Parse("20060102", task.Date)
+	tmDate, err := time.Parse(format, task.Date)
 	if err != nil {
 		return fmt.Errorf("parse: %w", err)
 	}
@@ -105,7 +119,7 @@ func checkDate(task *db.Task) error {
 
 	if tmDate.Before(now) {
 		if len(task.Repeat) == 0 {
-			task.Date = now.Format("20060102")
+			task.Date = now.Format(format)
 		} else {
 			task.Date = next
 		}

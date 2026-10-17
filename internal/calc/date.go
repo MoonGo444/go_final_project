@@ -255,7 +255,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 				}
 
 				for i := range day {
-					if i == numDay && i != date.Day() {
+					if i == numDay {
 						day[i] = true
 					}
 				}
@@ -265,6 +265,13 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 				if d == true {
 					for y, m := range month {
 						if m == true {
+							monthDays := time.Date(date.Year(), time.Month(y)+1, 0, 0, 0, 0, 0, time.UTC)
+							if i > monthDays.Day() && len(slMonth) == 1 && len(slDay) == 1 {
+								return "", errors.New("month day out of range")
+							} else if i > monthDays.Day() {
+								continue
+							}
+
 							newDate := time.Date(date.Year(), time.Month(y), i, 0, 0, 0, 0, time.UTC)
 
 							if date.Before(newDate) && newDate.After(now) {
@@ -290,13 +297,17 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 								}
 							}
 
+							if newDate.Equal(date) {
+								newDate = newDate.AddDate(1, 0, 0)
+							}
+
 							slDate = append(slDate, newDate)
 						}
 					}
 				}
 			}
 
-			var minDate time.Time
+			var minDate = now
 
 			for i, date := range slDate {
 				if i == 0 {
@@ -306,6 +317,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 
 				if date.Before(minDate) {
 					minDate = date
+					continue
 				}
 			}
 

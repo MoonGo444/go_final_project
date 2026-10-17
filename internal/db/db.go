@@ -19,14 +19,14 @@ CREATE TABLE scheduler (
 CREATE INDEX scheduler_date ON scheduler (date);
 `
 
-func Init(dbFile string) error {
-	var db *sql.DB
+var db *sql.DB
 
+func Init(dbFile string) (*sql.DB, error) {
 	_ = godotenv.Load()
 	dbPath := os.Getenv(dbFile)
 
 	if dbPath == "" {
-		dbPath = dbFile
+		dbPath = "scheduler.db"
 	}
 
 	_, err := os.Stat(dbPath)
@@ -38,16 +38,15 @@ func Init(dbFile string) error {
 
 	db, err = sql.Open("sqlite", dbPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer db.Close()
 
 	if install {
 		_, err := db.Exec(schema)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return db, nil
 }

@@ -1,15 +1,20 @@
-FROM golang:1.24
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /myapp
 
-ENV TODO_PORT=example
-ENV TODO_DBFILE=example
-ENV TODO_PASSWORD=example
+COPY go.mod go.sum ./
 
-COPY goapp ./
+RUN go mod download
 
-COPY web/ ./web/
+COPY . .
 
-EXPOSE 7540
+RUN CGO_ENABLED=0 go build -o goapp .
+
+FROM ubuntu:latest
+
+WORKDIR /myapp
+
+COPY --from=builder /myapp/goapp /myapp/goapp
+COPY --from=builder /myapp/web/ /myapp/web/
 
 CMD ["/myapp/goapp"]

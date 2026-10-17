@@ -10,12 +10,14 @@ import (
 func Run(port string) error {
 	prt := os.Getenv(port)
 	if prt == "" {
-		prt = ":7540"
+		prt = "7540"
 	}
 
-	api.Init()
+	pass := os.Getenv("TODO_PASSWORD")
 
-	if err := http.ListenAndServe(prt, nil); err != nil {
+	api.Init(pass)
+
+	if err := http.ListenAndServe(":"+prt, nil); err != nil {
 		return err
 	}
 
